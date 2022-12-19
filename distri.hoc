@@ -1,0 +1,31 @@
+objref shbox
+shbox = new VBox()
+shbox.intercept(1)
+access somaA
+objref sl
+sl = new SectionList()
+sl.wholetree()
+objref s
+s = new PlotShape(sl)
+s.colormap(12,1)
+s.colormap(0,0,0,255)
+s.colormap(1,0,85,255)
+s.colormap(2,0,170,255)
+s.colormap(3,0,255,255)
+s.colormap(4,0,255,128)
+s.colormap(5,0,255,0)
+s.colormap(6,110,255,0) 
+s.colormap(7,180,255,0)
+s.colormap(8,255,255,0) 
+s.colormap(9,255,170,0)
+s.colormap(10,255,100,0)
+s.colormap(11,255,0,0)
+s.variable("vmax_ds")
+//s.variable("v")
+s.exec_menu("Shape Plot")
+s.scale(-50,-17)
+s.exec_menu("Show Diam")
+fast_flush_list.append(s)
+shbox.intercept(0)
+shbox.map("Shape",700,10,250,250)
+

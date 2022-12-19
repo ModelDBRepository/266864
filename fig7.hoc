@@ -1,0 +1,318 @@
+// present version, figure 6D
+load_file("nrngui.hoc")
+
+Default_Eleak = -65
+membranecap = 0.64      	/* specific membrane capacitance in uF cm^-2 */
+membraneresist = 120236 	/* specific membrane resistance in ohm cm^2 */
+axialresist = 120	     	/* axial resistivity in ohm cm */
+
+xopen("Purkinje19b972-1.nrn")	// Load the morphology file.
+forsec "axon" delete_section()	// Delete original axon and add a fake AIS
+
+objref g2, b2,c2, distrx, distry, cdistry, p
+
+	forall {
+		insert pas e_pas=Default_Eleak	/* Insert Leak everywhere */
+	    insert hpkj	// Ih inserted everywhere
+		insert ds
+		insert pk
+	}
+
+    AIS {  g_pas=1/membraneresist Ra=axialresist cm=membranecap}
+	forsec spinydend {g_pas=5.3/membraneresist Ra=axialresist cm=5.3*membranecap}
+    forsec maindend {g_pas=1.2/membraneresist Ra=axialresist cm=1.2*membranecap}
+	forsec "soma" { g_pas=1/membraneresist Ra=axialresist cm=membranecap}
+
+forsec maindend {insert cdp4N}
+
+forsec alldend {
+    insert Kv3
+    gbar_Kv3 = 0.1512
+    vshift_Kv3 = 4
+    insert newCaP
+    pcabar_newCaP = 0.00019 
+    vshift_newCaP =-5
+    insert CaT3_1
+    pcabar_CaT3_1 = 2.7e-05
+
+    insert mslo
+    gbar_mslo = 0.21504
+    insert SK2
+    gkbar_SK2 = 2.4000e-04*1.5
+    scal_SK2 = 1.0
+    ghbar_hpkj = 0.00036
+	insert Kv1
+	gbar_Kv1 = 0.002
+	insert Kv4
+	 gbar_Kv4 = 0.0252 
+    insert Kv4s
+    gbar_Kv4s = 0.015
+
+}
+forsec spinydend {
+	insert cdp4Nsp
+    gkbar_SK2 = 0.00036 
+    
+    scal_SK2 = 1.0
+	gbar_Kv4 = 0.0264 
+    gbar_Kv4s = 0.015
+    ghbar_hpkj = 0.000324
+    vshift_Kv4 = 0
+    gbar_Kv1 = 0.001
+    gbar_Kv3 =0.1512
+    vshift_Kv3 = 0
+    pcabar_CaT3_1 = 0.000108 
+    pcabar_newCaP = 0.00076 
+    vshift_newCaP = -5
+    scale_cdp4Nsp = 3.5
+    gbar_mslo = 0.0896
+    insert abBK
+    gabkbar_abBK = 0.15
+}
+
+access somaA
+somaA distance(0,0.5)
+
+forsec "soma" {	
+	insert naRsg
+	gbar_naRsg = 0.03168 
+	vshifta_naRsg = 0
+    vshiftk_naRsg = 0
+    vshifti_naRsg = -5
+    
+	insert nap
+	gbar_nap = 0.00014 
+	insert pk
+	ena = 63
+    ghbar_hpkj = 0.000108
+
+    insert cdp20N_FD2
+
+    insert Kv3
+    gbar_Kv3 = 1.8
+    vshift_Kv3 = 4
+    insert newCaP
+    pcabar_newCaP =0.00019 
+    kt_newCaP = 1
+    vshift_newCaP = -5
+    insert mslo
+    gbar_mslo = 0.8736
+    insert abBK
+    gabkbar_abBK = 0.3
+    insert SK2
+    gkbar_SK2 = 0.0075 
+}
+
+AIS {
+    insert naRsg
+	gbar_naRsg = 0.56
+	vshifta_naRsg = 15
+	vshiftk_naRsg = 5
+    vshifti_naRsg = -5
+	insert nap
+	gbar_nap = 0.0023
+	insert CaT3_1
+	pcabar_CaT3_1 = 0.000128 
+	ena = 63
+    ghbar_hpkj = 0.000108 
+    insert cdpAIS
+
+    insert Kv3
+    gbar_Kv3 =115.2 
+    vshift_Kv3 = 4
+    insert newCaP
+    pcabar_newCaP = 0.00228 
+    kt_newCaP = 1
+    vshift_newCaP = -5
+    insert mslo
+    gbar_mslo = 6
+    insert abBK
+    gabkbar_abBK = 1.05
+    insert SK2
+    gkbar_SK2 = 0.027777778 
+}
+
+
+celsius = 34
+dt = 0.02
+steps_per_ms = 1/dt
+dtsim = 0.02
+objref rj
+objref g2, b2,c2, distrm, distrd
+
+xopen ("electrode.hoc")
+xopen("distri.hoc")	//voltage spatial distribution
+
+proc clamp_cc() {
+
+	somaA {
+		stim1.del = 0
+		stim1.dur = 1000000
+		stim1.amp = $1
+	}
+}
+
+v_init = -70
+
+// simple spike energy consumtion
+
+tstop = 500
+nsyn = 15
+FFI_delay = 1.4
+
+objref scalefile
+scalefile=new File()
+
+xopen("distri_synapse.hoc")
+
+//start parallel instance
+objref pc
+pc = new ParallelContext()
+
+print "number of hosts: ", pc.nhost(), "\thost id: ", pc.id() 
+
+//function farmed out to slave nodes
+func distscale() {local key, errval, cu_id, fr_id, dend_id localobj parvec, returnlist
+	key = $1
+	cu_id = int($1/1000000)
+	fr_id = int(($1 - cu_id*1000000)/10000)
+	dend_id = int(($1 - cu_id*1000000-fr_id*10000)/100)
+	trial_id = $1 - cu_id*1000000-fr_id*10000-dend_id*100
+	returnlist = new List()
+	returnlist = calc_EPSP_single(cu_id,fr_id,dend_id,trial_id)
+
+	pc.pack(returnlist.o(0))
+	pc.pack(returnlist.o(1))
+	pc.pack(returnlist.o(2))
+	pc.pack(returnlist.o(3))
+	
+	pc.post(key)
+	return key
+}
+
+objref aSynapseList[11]
+objref bSynapseList[11]
+obfunc calc_EPSP_single() {localobj outlist, currecord, integ_soma, br1,tip,onpath,patch
+	//function to calculate the max deflection due to a single synapse
+	cu_id = $1
+	fr_id = $2
+	synval= $3
+	tr_id = $4
+	curr = 0
+	outlist=new List()
+	integ_soma = new Vector()
+	integ_soma.record(&somaA.v(0.5))
+	
+	tip = new Vector()
+	tip.record(&dendA1_001011110110010110.v(0.5))
+	patch = new Vector()
+	patch.record(&dendA1_0010111101.v(0.5))
+	onpath = new Vector()
+	onpath.record(&dendA1_001011.v(0.5))
+
+	nlist = fr_id	// in fact nlist can be multiple, make synapses firing at bursting
+
+	Npf = (5+(synval-1)*5)
+	Nst = 8*nsyn
+	shift = -5+(cu_id-1)*0.5
+	printf ("shift is %d",shift)
+for i = 1,nlist {aSynapseList[i-1] = new List() }	// every time this will be initialized.
+for i = 1,nlist {bSynapseList[i-1] = new List() }
+randomseed = cu_id*1000000+fr_id*10000+ synval*100 + tr_id
+randomseed2 = cu_id*1000000+fr_id*10000+ synval*100 + tr_id+12345678
+randomseed3 = cu_id*1000000+fr_id*10000+ synval*100 + tr_id+12345678+6666666666
+
+br1 = new SectionList()
+forsec "dendA1_00101111011" {br1.append()}
+br1.remove(cf)
+br1.unique()
+
+for i = 1,nlist {aSynapseList[i-1] = distSyns(Npf,br1,randomseed)}
+for i = 1,nlist {bSynapseList[i-1] = distSyns(Nst,br1,randomseed2)}
+for i = 1,nlist {
+	for ii=1,aSynapseList[i-1].count() {
+  	  aSynapseList[i-1].object(ii-1).onset = 386+10*(i-1)
+  	  aSynapseList[i-1].object(ii-1).tau0 = 0.3
+  	  aSynapseList[i-1].object(ii-1).tau1 = 3
+   	  aSynapseList[i-1].object(ii-1).e = 0
+   	  aSynapseList[i-1].object(ii-1).gmax = 0.5e-3//
+	}
+}
+for i = 1,nlist {
+	for ii=1,bSynapseList[i-1].count() {
+  	  bSynapseList[i-1].object(ii-1).onset = 386+10*(i-1)+shift
+  	  bSynapseList[i-1].object(ii-1).tau0 = 1
+  	  bSynapseList[i-1].object(ii-1).tau1 = 8
+   	 bSynapseList[i-1].object(ii-1).e = -85
+   	 bSynapseList[i-1].object(ii-1).gmax = 1e-3/nsyn
+	}
+}
+
+clamp_cc(curr)
+finitialize(v_init)
+continuerun(tstop)
+
+outlist.append(integ_soma)
+outlist.append(tip)
+outlist.append(patch)
+outlist.append(onpath)
+
+return outlist
+}
+
+pc.runworker()
+
+//objects for input/output
+objref somavec, tipvec, patchvec, onpathvec
+
+somavec = new Vector()
+tipvec = new Vector()
+patchvec = new Vector()
+onpathvec = new Vector()
+
+strdef tmpstr
+strdef outDir
+strdef cmd 
+objref outfile
+outfile = new File()
+
+proc calcEPSPs() {
+	sprint(outDir,"simdata/fig7")
+	sprint(cmd, "system(\"mkdir -p %s\")",outDir)
+	execute(cmd)
+	somaA distance(0,0.5)
+	for cu = 1, $1 {
+		for freq = 1, $2 {
+			for m = 1, $3 {
+				for nt =1 ,$4 {
+					mmtag=cu*1000000+freq*10000+ m*100 + nt
+					pc.submit("distscale",mmtag)	//send out the error calculations
+				}
+			}
+		}
+	}
+	//collect error values
+	while (pc.working()) {	
+		key = pc.retval()	//retrieve the tag
+		pc.look_take(key)	//remove the tag/job from the bulletin
+		
+		somavec = pc.upkvec()	//unpack the error value associated with the tag
+		tipvec = pc.upkvec()
+		patchvec = pc.upkvec()
+		onpathvec = pc.upkvec()
+		
+		print "received key ",key
+		cuno = int(key/1000000)
+		frno = int((key- cuno*1000000)/10000)
+		synno= int((key - cuno*1000000 - frno*10000)/100)
+		trno  = key - cuno*1000000-frno*10000-synno*100
+		
+		sprint(tmpstr,"%s/%03d_%03d_%03d_%03d_vtip.dat",outDir,cuno,frno,synno,trno) 
+		outfile.wopen(tmpstr)
+		tipvec.printf(outfile)
+		outfile.close()
+
+	}
+}	
+calcEPSPs(20,1,20,20)	//several arguments to pass parameters, temporal, frequency of pf, number of synapses, ntrial
+

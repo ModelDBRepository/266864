@@ -1,0 +1,49 @@
+
+//Notice the difference between Basketball synaptic inputs and others
+numsegsp = 0 // will be total number of segments
+forsec spinydend {numsegsp+=nseg}
+numsegbs = 0
+forsec bs {numsegbs+=nseg}
+
+objref mvecpf,mvecst,mvecbs
+mvecpf = new Vector(numsegsp) // will hold cumulative sums of segment length
+mvecst = new Vector(numsegsp)
+mvecbs = new Vector(numsegbs)
+
+// each element in mvecpf corresponds to a segment in seclist
+
+ii = 0 // to iterate over mvecpf
+mtotalpf = 0 // will be total length in seclist
+forsec spinydend {
+  for (x,0) { // iterate over internal nodes of current section
+    mtotalpf += L/nseg // or area(x) if density is in (number)/area
+    mvecpf.x[ii] = mtotalpf
+    ii += 1
+  }
+}
+
+mvecst = mvecpf.c
+
+ii = 0 // to iterate over mvecpf
+mtotalbs = 0 // will be total length in seclist
+forsec bs {
+  for (x,0) { // iterate over internal nodes of current section
+    mtotalbs += L/nseg // or area(x) if density is in (number)/area
+    mvecbs.x[ii] = mtotalbs
+    ii += 1
+  }
+}
+
+
+objref nvecpf, nvecst, nvecbs
+
+objref ampsynlist,gabastsynlist,gababssynlist
+objref ampsynprelist,gabastsynprelist,gababssynprelist
+
+objref ampcon[300000]
+objref gabastcon[300000]
+objref gababscon[300000]
+SEED_0 = 100
+SEED_1 = 1223456
+SEED_2 = 3254764
+use_mcell_ran4(1)

@@ -1,0 +1,439 @@
+
+load_file("nrngui.hoc")
+
+Default_Eleak = -65
+membranecap = 0.64      	/* specific membrane capacitance in uF cm^-2 */
+membraneresist = 120236 	/* specific membrane resistance in ohm cm^2 */
+axialresist = 120	     	/* axial resistivity in ohm cm */
+
+xopen("Purkinje19b972-1.nrn")	// Load the morphology file.
+forsec "axon" delete_section()	// Delete original axon and add a fake AIS
+
+objref g2, b2,c2, distrx, distry, cdistry, p
+
+	forall {
+		insert pas e_pas=Default_Eleak	/* Insert Leak everywhere */
+	    insert hpkj	// Ih inserted everywhere
+		insert ds
+		insert pk
+	}
+
+    AIS {  g_pas=1/membraneresist Ra=axialresist cm=membranecap}
+	forsec spinydend {g_pas=5.3/membraneresist Ra=axialresist cm=5.3*membranecap}
+    forsec maindend {g_pas=1.2/membraneresist Ra=axialresist cm=1.2*membranecap}
+	forsec "soma" { g_pas=1/membraneresist Ra=axialresist cm=membranecap}
+
+forsec maindend {insert cdp4N}
+forsec alldend {
+    insert Kv3
+    gbar_Kv3 = 0.1512
+    vshift_Kv3 = 4
+    insert newCaP
+    pcabar_newCaP = 0.00019 
+    vshift_newCaP =-5
+    insert CaT3_1
+    pcabar_CaT3_1 = 2.7e-05
+
+    insert mslo
+    gbar_mslo = 0.21504
+    insert SK2
+    gkbar_SK2 = 2.4000e-04*1.5
+    scal_SK2 = 1.0
+    ghbar_hpkj = 0.00036
+	insert Kv1
+	gbar_Kv1 = 0.002
+	insert Kv4
+	 gbar_Kv4 = 0.0252 
+    insert Kv4s
+    gbar_Kv4s = 0.015
+
+}
+
+forsec spinydend {
+	insert cdp4Nsp
+    gkbar_SK2 = 0.00036 
+    
+    scal_SK2 = 1.0
+	gbar_Kv4 = 0.0264 
+    gbar_Kv4s = 0.015
+    ghbar_hpkj = 0.000324
+    vshift_Kv4 = 0
+    gbar_Kv1 = 0.001
+    gbar_Kv3 =0.1512
+    vshift_Kv3 = 0
+    pcabar_CaT3_1 = 0.000108 
+    pcabar_newCaP = 0.00076 
+    vshift_newCaP = -5
+    scale_cdp4Nsp = 3.5
+    gbar_mslo = 0.0896
+    insert abBK
+    gabkbar_abBK = 0.15
+}
+
+access somaA
+somaA distance(0,0.5)
+
+forsec "soma" {	
+	insert naRsg
+	gbar_naRsg = 0.03168 
+	vshifta_naRsg = 0
+    vshiftk_naRsg = 0
+    vshifti_naRsg = -5
+    
+	insert nap
+	gbar_nap = 0.00014 
+	insert pk
+	ena = 63
+    ghbar_hpkj = 0.000108
+
+    insert cdp20N_FD2
+
+    insert Kv3
+    gbar_Kv3 = 1.8
+    vshift_Kv3 = 4
+    insert newCaP
+    pcabar_newCaP =0.00019 
+    kt_newCaP = 1
+    vshift_newCaP = -5
+    insert mslo
+    gbar_mslo = 0.8736
+    insert abBK
+    gabkbar_abBK = 0.3
+    insert SK2
+    gkbar_SK2 = 0.0075 
+}
+
+AIS {
+    insert naRsg
+	gbar_naRsg = 0.56
+	vshifta_naRsg = 15
+	vshiftk_naRsg = 5
+    vshifti_naRsg = -5
+	insert nap
+	gbar_nap = 0.0023
+	insert CaT3_1
+	pcabar_CaT3_1 = 0.000128 
+	ena = 63
+    ghbar_hpkj = 0.000108 
+    insert cdpAIS
+
+    insert Kv3
+    gbar_Kv3 =115.2 
+    vshift_Kv3 = 4
+    insert newCaP
+    pcabar_newCaP = 0.00228 
+    kt_newCaP = 1
+    vshift_newCaP = -5
+    insert mslo
+    gbar_mslo = 6
+    insert abBK
+    gabkbar_abBK = 1.05
+    insert SK2
+    gkbar_SK2 = 0.027777778 
+}
+
+proc kv4_ko() {
+	forsec maindend{
+		 gbar_Kv4 = 0.0252*$1
+   		 gbar_Kv4s = 0.015*$1
+	}
+	forsec spinydend{
+		 gbar_Kv4 = 0.0264 *$1
+   		 gbar_Kv4s = 0.015*$1
+	}
+}
+
+access somaA
+
+xopen("dendv_arnd21.ses")
+xopen("distal2.ses")
+celsius = 34
+dt = 0.02
+tstop = 600
+steps_per_ms = 1/dt
+dtsim = 0.02
+protc = 1
+
+objref g2, b2,c2, distrm, distrd
+
+
+objref cu0,cu1,cu2,cu3,cu4,cu5,cu6,cu7,cu8,cu9,cu10,cu11,cu12,cu13,cu14,cu15,dummy1,dummy2
+objref du0,du1,du2,du3,du4,du5,du6,du7,du8,du9,du10,du11,du12,du13
+objref eu0,eu1,eu2,eu3,eu4,eu5,eu6,eu7,eu8,eu9,eu10,eu11,eu12,eu13,eu14
+objref cumatrix,dumatrix, eumatrix
+objref fcu,fdu,feu
+fcu = new File()
+fdu = new File()
+feu = new File()
+
+strdef outDir,cmd
+sprint(outDir,"simdata/fig2")
+sprint(cmd, "system(\"mkdir -p %s\")",outDir)
+execute(cmd)
+
+xopen ("electrode.hoc")
+  if (protc==1) {
+
+  		fcu.wopen("main_current_0_0.dat")
+		fdu.wopen("spiny_current_0_0.dat")
+		feu.wopen("spiny2_current_0_0.dat")
+		stim1.amp = 0
+  } else if (protc==2) {
+  		fcu.wopen("main_current_0_2.dat")
+		fdu.wopen("spiny_current_0_2.dat")
+		feu.wopen("spiny2_current_0_2.dat")
+		stim1.amp = -0.2
+  } else if (protc==3) {
+  		fcu.wopen("main_current_0_4.dat")
+		fdu.wopen("spiny_current_0_4.dat")
+		feu.wopen("spiny2_current_0_4.dat")
+		stim1.amp = -0.4
+  } else {
+ 		print "undefined protocol"
+ 		stop 
+  }
+
+stim1.del = 0
+stim1.dur =50000000000000
+v_init = -70
+
+dendA1_001011110110010110 {nseg =3}
+
+cu0 = new Vector()
+cu1 = new Vector()
+cu2 = new Vector()
+cu3 = new Vector()
+cu4 = new Vector()
+cu5 = new Vector()
+cu6 = new Vector()
+cu7 = new Vector()
+cu8 = new Vector()
+cu9 = new Vector()
+cu10 = new Vector()
+cu11= new Vector()
+cu12 = new Vector()
+cu13 = new Vector()
+cu14 = new Vector()
+cu15 = new Vector()
+
+du0 = new Vector()
+du1 = new Vector()
+du2 = new Vector()
+du3 = new Vector()
+du4 = new Vector()
+du5 = new Vector()
+du6 = new Vector()
+du7 = new Vector()
+du8 = new Vector()
+du9 = new Vector()
+du10 = new Vector()
+du11= new Vector()
+du12 = new Vector()
+du13 = new Vector()
+
+eu0 = new Vector()
+eu1 = new Vector()
+eu2 = new Vector()
+eu3 = new Vector()
+eu4 = new Vector()
+eu5 = new Vector()
+eu6 = new Vector()
+eu7 = new Vector()
+eu8 = new Vector()
+eu9 = new Vector()
+eu10 = new Vector()
+eu11= new Vector()
+eu12 = new Vector()
+eu13 = new Vector()
+eu14 = new Vector()
+
+cumatrix = new Matrix()
+dumatrix = new Matrix()
+eumatrix = new Matrix()
+
+cu0.record(&dendA1_00101111011.ik_Kv3(0.5))
+cu1.record(&dendA1_00101111011.ica_newCaP(0.5))
+cu2.record(&dendA1_00101111011.iCa_CaT3_1(0.5))
+cu3.record(&dendA1_00101111011.ik_mslo(0.5))
+cu4.record(&dendA1_00101111011.ik_Kv4(0.5))
+cu5.record(&dendA1_00101111011.ik_SK2(0.5))
+cu6.record(&dendA1_00101111011.i_hpkj(0.5))
+cu7.record(&dendA1_00101111011.ik_Kv1(0.5))
+cu8.record(&dendA1_00101111011.ik_Kv4s(0.5))
+cu9.record(&dendA1_00101111011.i_pas(0.5))
+cu10.record(&dendA1_001011110110010110.v(0.5))	//tip
+cu11.record(&dendA1_001011.v(0.5))	//onpath
+cu12.record(&somaA.v(0.5))	//soma
+cu13.record(&dendA1_00101111011.v(0.5))
+cu14.record(&dendA1_00101111011.v(0.5+1/3))
+cu15.record(&dendA1_00101111011.v(0.5-1/3))
+
+dendA1_001011110110010110 {nseg = 3}
+du0.record(&dendA1_001011110110010110.ik_Kv3(0.5))
+du1.record(&dendA1_001011110110010110.ica_newCaP(0.5))
+du2.record(&dendA1_001011110110010110.iCa_CaT3_1(0.5))
+du3.record(&dendA1_001011110110010110.ik_mslo(0.5))
+du4.record(&dendA1_001011110110010110.ik_Kv4(0.5))
+du5.record(&dendA1_001011110110010110.ik_SK2(0.5))
+du6.record(&dendA1_001011110110010110.i_hpkj(0.5))
+du7.record(&dendA1_001011110110010110.ik_Kv1(0.5))
+du8.record(&dendA1_001011110110010110.ik_Kv4s(0.5))
+du9.record(&dendA1_001011110110010110.i_pas(0.5))
+du10.record(&dendA1_001011110110010110.ik_abBK(0.5))
+
+du11.record(&dendA1_001011110110010110.v(0.5))
+du12.record(&dendA1_001011110110010110.v(0.5+1/3))
+du13.record(&dendA1_001011110110010110.v(0.5-1/3))
+
+//dendA1_001011110110011101 2 segments by default
+//dendA1_001011110110011101 {nseg = 3}
+forsec "dendA1_0010111101100111*" {nseg = 3}
+eu0.record(&dendA1_001011110110011110.ik_Kv3(0.5))
+eu1.record(&dendA1_001011110110011110.ica_newCaP(0.5))
+eu2.record(&dendA1_001011110110011110.iCa_CaT3_1(0.5))
+eu3.record(&dendA1_001011110110011110.ik_mslo(0.5))
+eu4.record(&dendA1_001011110110011110.ik_Kv4(0.5))
+eu5.record(&dendA1_001011110110011110.ik_SK2(0.5))
+eu6.record(&dendA1_001011110110011110.i_hpkj(0.5))
+eu7.record(&dendA1_001011110110011110.ik_Kv1(0.5))
+eu8.record(&dendA1_001011110110011110.ik_Kv4s(0.5))
+eu9.record(&dendA1_001011110110011110.i_pas(0.5))
+eu10.record(&dendA1_001011110110011110.ik_abBK(0.5))
+
+eu11.record(&dendA1_001011110110011110.v(0.5))
+eu12.record(&dendA1_001011110110011110.v(0.5+1/3))
+eu13.record(&dendA1_001011110110011110.v(0.5-1/3))
+
+
+//kv4_ko(0.5)
+
+xopen("distri.hoc")	//voltage spatial distribution
+
+xopen("distri_synapse.hoc")
+
+objref sl2
+sl2 = new SectionList()
+sl2.wholetree()
+objref ss
+ss = new Shape(sl2)
+
+Npf=45
+nlist = 10/10	// in fact nlist can be multiple, make synapses firing at bursting
+objref aSynapseList[nlist]
+for i = 0,nlist-1 {aSynapseList[i] = new List()}
+randomseed = 20
+objref br1
+br1 = new SectionList()
+forsec "dendA1_00101111011" {br1.append()}
+
+br1.remove(cf)
+br1.unique()
+
+for i = 0,nlist-1 {aSynapseList[i] = distSyns(Npf,br1,randomseed)}
+
+for i = 0,nlist-1 {
+for ii=0,aSynapseList[i].count()-1 {
+	aSynapseList[i].object(ii).onset = 396
+    aSynapseList[i].object(ii).tau0 = 0.3
+    aSynapseList[i].object(ii).tau1 = 3
+    aSynapseList[i].object(ii).e = 0
+    aSynapseList[i].object(ii).gmax = 0.5e-3//
+    ss.point_mark(aSynapseList[i].object(ii),4,4,4)
+    ss.exec_menu("Show Diam")
+}
+}
+eu14.record(&syn2[20].i)
+/***
+objref f1,f2
+f1 = new File()
+f1.wopen("simdata/fig2/maindistr_amp.dat")
+f2 = new File()
+f2.wopen("simdata/fig2/spinydistr_amp.dat")
+**/
+finitialize(v_init)
+startsw()
+continuerun(tstop)		// This is "run()" without the "init()"
+
+cumatrix.resize(cu0.size(),17)
+cumatrix.setcol(0,cu0)
+cumatrix.setcol(1,cu1)
+cumatrix.setcol(2,cu2)
+cumatrix.setcol(3,cu3)
+cumatrix.setcol(4,cu4)
+cumatrix.setcol(5,cu5)
+cumatrix.setcol(6,cu6)
+cumatrix.setcol(7,cu7)
+cumatrix.setcol(8,cu8)
+cumatrix.setcol(9,cu9)
+cumatrix.setcol(10,cu10)
+cumatrix.setcol(11,cu11)
+cumatrix.setcol(12,cu12)
+cumatrix.setcol(13,cu13)
+dendA1_00101111011 {r1 = ri(0.5) r2 = ri(0.5+1/3)}
+cumatrix.setcol(14,cu14)
+cumatrix.setcol(15,cu15)
+
+cu14.sub(cu13)
+cu14.div(r2)	//disgtal
+cu15.sub(cu13)	//proximal
+cu15.div(r1)
+cumatrix.setcol(16,cu14.add(cu15))
+
+dumatrix.resize(du0.size(),15)
+dumatrix.setcol(0,du0)
+dumatrix.setcol(1,du1)
+dumatrix.setcol(2,du2)
+dumatrix.setcol(3,du3)
+dumatrix.setcol(4,du4)
+
+
+dumatrix.setcol(5,du5)
+dumatrix.setcol(6,du6)
+dumatrix.setcol(7,du7)
+dumatrix.setcol(8,du8)
+dumatrix.setcol(9,du9)
+dumatrix.setcol(10,du10)
+dumatrix.setcol(11,du11)
+dumatrix.setcol(12,du12)
+dumatrix.setcol(13,du13)
+
+dendA1_001011110110010110 {r1 = ri(0.5) r2 = ri(0.5+1/3)}
+
+du12.sub(du11)
+du12.div(r2)
+du13.sub(du11)
+du13.div(r1)
+dumatrix.setcol(14,du12.add(du13))
+
+eumatrix.resize(eu0.size(),16)
+eumatrix.setcol(0,eu0)
+eumatrix.setcol(1,eu1)
+eumatrix.setcol(2,eu2)
+eumatrix.setcol(3,eu3)
+eumatrix.setcol(4,eu4)
+eumatrix.setcol(5,eu5)
+eumatrix.setcol(6,eu6)
+eumatrix.setcol(7,eu7)
+eumatrix.setcol(8,eu8)
+eumatrix.setcol(9,eu9)
+eumatrix.setcol(10,eu10)
+eumatrix.setcol(11,eu11)
+eumatrix.setcol(12,eu12)
+eumatrix.setcol(13,eu13)
+
+dendA1_001011110110010110 {r1 = ri(0.5) r2 = ri(0.5+1/3)}
+
+eu12.sub(eu11)
+eu12.div(r2)
+eu13.sub(eu11)
+eu13.div(r1)
+eumatrix.setcol(14,eu12.add(eu13))
+eumatrix.setcol(15,eu14)
+
+cumatrix.fprint(fcu, "  %g")
+dumatrix.fprint(fdu, "  %g")
+eumatrix.fprint(feu, "  %g")
+fcu.close()
+fdu.close()
+feu.close()
+stopsw()

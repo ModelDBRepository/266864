@@ -1,0 +1,15 @@
+
+cfstart = 400
+//xopen("cfdistrib.hoc")
+objref stim1,stim2,stim3,stim4, CCn
+somaA stim1 = new IClamp(0.5)
+stim1.del = 000
+stim1.dur = tstop
+stim1.amp =0.1*0
+
+somaA CCn = new IClamp(0.5)
+CCn.del = 0
+CCn.dur = 100
+CCn.amp = 0
+
+finitialize(-63)

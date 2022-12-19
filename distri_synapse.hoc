@@ -1,0 +1,64 @@
+/* assumes
+1. sections to be innervated have been appended to a SectionList called seclist
+2. synaptic density is in units of number/(length in um)
+3. geometry specification has been completed, including spatial discretization
+4. total number of synapses to distribute is called NUMSYN
+*/
+
+////////use: aSynapseList = distSyns(numberOfSynapses,listOfSections,randomseed)
+obfunc distSyns() { local NUMSYN,seedl localobj mvec,nvec,synlist,r
+
+numsegs = 0 // will be total number of segments
+forsec $o2 {numsegs+=nseg}
+//objref mvec
+mvec = new Vector(numsegs) // will hold cumulative sums of segment length
+// each element in mvec corresponds to a segment in seclist
+
+ii = 0 // to iterate over mvec
+mtotal = 0 // will be total length in seclist
+forsec $o2 {
+  for (x,0) { // iterate over internal nodes of current section
+    mtotal += L/nseg // or area(x) if density is in (number)/area
+    mvec.x[ii] = mtotal
+    ii += 1
+  }
+}
+/*
+now mvec.x[ii] is the sum of segment lengths (or areas)
+for all segments up to and including segment ii
+*/
+
+//objref nvec
+nvec = new Vector(numsegs, 0) // fill elements with 0
+// each element in nvec corresponds to a segment in seclist
+// when done, each element will hold the number of synaptic mechanisms
+// that are to be attached to the corresponding segment
+seedl = $3
+ r = new Random(seedl)
+ r.uniform(0,mtotal)
+ 
+ NUMSYN = $1
+for ii=1,NUMSYN {
+  x = r.repick() //value drawn from uniform distribution over [0,mtotal]
+  jj = mvec.indwhere(">=", x) // the first element in mvec that is >=x 
+  // this is the index of the segment that should get the synapse
+  nvec.x[jj] += 1
+}
+
+//objref synlist
+synlist = new List()
+ii = 0
+forsec $o2 {
+  for (x, 0) {
+    num = nvec.x[ii]
+    if (num>0) {
+      for jj=1,num {print x, secname() synlist.append(new syn2(x))}
+      // to keep this entirely generic
+      // defer param specification until later
+    }
+    ii += 1 // we're moving on to the next segment,
+      // so move on to the next element of nvec
+  }
+}
+    return synlist
+}
